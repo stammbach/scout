@@ -24,6 +24,14 @@ class TypesenseEngineTest extends TestCase
     {
         parent::setUp();
 
+        // Mock Event Dispatcher
+        Container::getInstance()->bind(
+            'events',
+            function () {
+                return $this->createMock(\Illuminate\Events\Dispatcher::class);
+            }
+        );
+
         // Mock the Typesense client and pass it to the engine constructor
         $typesenseClient = $this->createMock(TypesenseClient::class);
         $this->engine = $this->getMockBuilder(TypesenseEngine::class)
@@ -62,7 +70,8 @@ class TypesenseEngineTest extends TestCase
         $documents->expects($this->once())
             ->method('import')
             ->with(
-                [['id' => 1, 'name' => 'Model 1']], ['action' => 'upsert'],
+                [['id' => 1, 'name' => 'Model 1']],
+                ['action' => 'upsert'],
             )
             ->willReturn([[
                 'success' => true,
@@ -202,21 +211,38 @@ class TypesenseEngineTest extends TestCase
         $this->assertEquals(0, $totalCountWithoutFound);
     }
 
-    public function test_flush_method(): void
+    public function test_flush_method_without_collection(): void
     {
         // Mock a model instance
         $model = $this->createMock(Model::class);
 
         $collection = $this->createMock(TypesenseCollection::class);
-        // Mock the getOrCreateCollectionFromModel method
-        $this->engine->expects($this->once())
-            ->method('getOrCreateCollectionFromModel')
-            ->with($model)
-            ->willReturn($collection);
 
         // Mock the delete method of the TypesenseCollection
+        $collection->expects($this->never())
+            ->method('delete');
+
+        // Call the flush method
+        $this->engine->flush($model);
+    }
+
+    public function test_flush_method_with_collection(): void
+    {
+        // Mock a model
+        $model = $this->createMock(SearchableModel::class);
+
+        // Mock the getOrCreateCollectionFromModel method
+        $collection = $this->createMock(TypesenseCollection::class);
+
+        $this->engine->expects($this->exactly(2))
+            ->method('getOrCreateCollectionFromModel')
+            ->willReturn($collection);
+
         $collection->expects($this->once())
             ->method('delete');
+
+        // Call the update method
+        $this->engine->update(collect([$model]));
 
         // Call the flush method
         $this->engine->flush($model);

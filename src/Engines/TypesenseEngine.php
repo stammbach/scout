@@ -453,13 +453,7 @@ class TypesenseEngine extends Engine
     {
         $index = $model->searchableAs();
 
-        $collectionIndex = $this->typesense->getCollections()->{$index};
-
-        if ($collectionIndex->exists() !== true) {
-            return;
-        }
-
-        $collectionIndex->delete();
+        $this->getOrCreateCollectionFromModel($model, false)->delete();
 
         event(new IndexDeleted($index));
     }
@@ -501,18 +495,19 @@ class TypesenseEngine extends Engine
      * Get collection from model or create new one.
      *
      * @param  \Illuminate\Database\Eloquent\Model  $model
+     * @param  bool  $autoCreate = true
      * @return TypesenseCollection
      *
      * @throws \Typesense\Exceptions\TypesenseClientError
      * @throws \Http\Client\Exception
      */
-    protected function getOrCreateCollectionFromModel($model): TypesenseCollection
+    protected function getOrCreateCollectionFromModel($model, $autoCreate = true): TypesenseCollection
     {
         $index = $model->searchableAs();
 
         $collectionIndex = $this->typesense->getCollections()->{$index};
 
-        if ($collectionIndex->exists() === true) {
+        if ($collectionIndex->exists() === true || !$autoCreate) {
             return $collectionIndex;
         }
 
