@@ -8,6 +8,8 @@ use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Support\Collection;
 use Illuminate\Support\LazyCollection;
 use Laravel\Scout\Builder;
+use Laravel\Scout\Events\IndexCreated;
+use Laravel\Scout\Events\IndexDeleted;
 use stdClass;
 use Typesense\Client as Typesense;
 use Typesense\Collection as TypesenseCollection;
@@ -449,7 +451,17 @@ class TypesenseEngine extends Engine
      */
     public function flush($model)
     {
-        $this->getOrCreateCollectionFromModel($model)->delete();
+        $index = $model->searchableAs();
+
+        $collectionIndex = $this->typesense->getCollections()->{$index};
+
+        if ($collectionIndex->exists() !== true) {
+            return;
+        }
+
+        $collectionIndex->delete();
+
+        event(new IndexDeleted($index));
     }
 
     /**
@@ -478,7 +490,11 @@ class TypesenseEngine extends Engine
      */
     public function deleteIndex($name)
     {
-        return $this->typesense->getCollections()->{$name}->delete();
+        $result = $this->typesense->getCollections()->{$name}->delete();
+
+        event(new IndexDeleted($name));
+
+        return $result;
     }
 
     /**
@@ -492,10 +508,12 @@ class TypesenseEngine extends Engine
      */
     protected function getOrCreateCollectionFromModel($model): TypesenseCollection
     {
-        $index = $this->typesense->getCollections()->{$model->searchableAs()};
+        $index = $model->searchableAs();
 
-        if ($index->exists() === true) {
-            return $index;
+        $collectionIndex = $this->typesense->getCollections()->{$index};
+
+        if ($collectionIndex->exists() === true) {
+            return $collectionIndex;
         }
 
         $schema = config('scout.typesense.model-settings.'.get_class($model).'.collection-schema') ?? [];
@@ -505,12 +523,16 @@ class TypesenseEngine extends Engine
         }
 
         if (! isset($schema['name'])) {
-            $schema['name'] = $model->searchableAs();
+            $schema['name'] = $index;
         }
 
         $this->typesense->getCollections()->create($schema);
 
-        return $this->typesense->getCollections()->{$model->searchableAs()};
+        $collectionIndex->setExists(true);
+
+        event(new IndexCreated($index));
+
+        return $collectionIndex;
     }
 
     /**

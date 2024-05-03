@@ -4,6 +4,8 @@ namespace Laravel\Scout\Engines;
 
 use Illuminate\Support\LazyCollection;
 use Laravel\Scout\Builder;
+use Laravel\Scout\Events\IndexCreated;
+use Laravel\Scout\Events\IndexDeleted;
 use Laravel\Scout\Jobs\RemoveableScoutCollection;
 use Meilisearch\Client as MeilisearchClient;
 use Meilisearch\Contracts\IndexesQuery;
@@ -379,7 +381,11 @@ class MeilisearchEngine extends Engine
      */
     public function createIndex($name, array $options = [])
     {
-        return $this->meilisearch->createIndex($name, $options);
+        $index = $this->meilisearch->createIndex($name, $options);
+
+        event(new IndexCreated($name));
+
+        return $index;
     }
 
     /**
@@ -406,7 +412,11 @@ class MeilisearchEngine extends Engine
      */
     public function deleteIndex($name)
     {
-        return $this->meilisearch->deleteIndex($name);
+        $result = $this->meilisearch->deleteIndex($name);
+
+        event(new IndexDeleted($name));
+
+        return $result;
     }
 
     /**
@@ -426,6 +436,8 @@ class MeilisearchEngine extends Engine
 
         foreach ($indexes->getResults() as $index) {
             $tasks[] = $index->delete();
+
+            event(new IndexDeleted($index->getUid()));
         }
 
         return $tasks;
