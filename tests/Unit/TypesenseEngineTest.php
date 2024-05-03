@@ -211,38 +211,22 @@ class TypesenseEngineTest extends TestCase
         $this->assertEquals(0, $totalCountWithoutFound);
     }
 
-    public function test_flush_method_without_collection(): void
+    public function test_flush_method(): void
     {
         // Mock a model instance
         $model = $this->createMock(Model::class);
 
         $collection = $this->createMock(TypesenseCollection::class);
 
-        // Mock the delete method of the TypesenseCollection
-        $collection->expects($this->never())
-            ->method('delete');
-
-        // Call the flush method
-        $this->engine->flush($model);
-    }
-
-    public function test_flush_method_with_collection(): void
-    {
-        // Mock a model
-        $model = $this->createMock(SearchableModel::class);
-
         // Mock the getOrCreateCollectionFromModel method
-        $collection = $this->createMock(TypesenseCollection::class);
-
-        $this->engine->expects($this->exactly(2))
+        $this->engine->expects($this->once())
             ->method('getOrCreateCollectionFromModel')
+            ->with($model)
             ->willReturn($collection);
 
+        // Mock the delete method of the TypesenseCollection
         $collection->expects($this->once())
             ->method('delete');
-
-        // Call the update method
-        $this->engine->update(collect([$model]));
 
         // Call the flush method
         $this->engine->flush($model);
