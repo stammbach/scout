@@ -495,7 +495,7 @@ class TypesenseEngine extends Engine
      * Get collection from model or create new one.
      *
      * @param  \Illuminate\Database\Eloquent\Model  $model
-     * @param  bool  $autoCreate = true
+     * @param  bool  $autoCreate  = true
      * @return TypesenseCollection
      *
      * @throws \Typesense\Exceptions\TypesenseClientError
@@ -507,7 +507,7 @@ class TypesenseEngine extends Engine
 
         $collectionIndex = $this->typesense->getCollections()->{$index};
 
-        if ($collectionIndex->exists() === true || !$autoCreate) {
+        if ($collectionIndex->exists() === true || ! $autoCreate) {
             return $collectionIndex;
         }
 
