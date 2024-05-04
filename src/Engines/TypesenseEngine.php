@@ -262,7 +262,7 @@ class TypesenseEngine extends Engine
         ];
 
         if (method_exists($builder->model, 'typesenseSearchParameters')) {
-            $parameters = array_merge($builder->model->typesenseSearchParameters());
+            $parameters = array_merge($parameters, $builder->model->typesenseSearchParameters());
         }
 
         if (! empty($builder->options)) {
