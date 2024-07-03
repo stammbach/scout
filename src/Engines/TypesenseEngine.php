@@ -122,7 +122,7 @@ class TypesenseEngine extends Engine
      */
     protected function createImportSortingDataObject($document)
     {
-        $data = new stdClass;
+        $data = new stdClass();
 
         $data->code = $document['code'] ?? 0;
         $data->success = $document['success'];
@@ -291,44 +291,29 @@ class TypesenseEngine extends Engine
     protected function filters(Builder $builder): string
     {
         $whereFilter = collect($builder->wheres)
-            ->map(fn ($value, $key) => $this->parseWhereFilter($value, $key))
+            ->map(
+                fn ($value, $key) => is_array($value)
+                    ? sprintf('%s:%s', $key, implode('', $value))
+                    : sprintf('%s:=%s', $key, $value)
+            )
             ->values()
             ->implode(' && ');
 
         $whereInFilter = collect($builder->whereIns)
-            ->map(fn ($value, $key) => $this->parseWhereInFilter($value, $key))
+            ->map(fn ($value, $key) => sprintf('%s:=[%s]', $key, implode(', ', $value)))
             ->values()
             ->implode(' && ');
 
-        return $whereFilter.(
-            ($whereFilter !== '' && $whereInFilter !== '') ? ' && ' : ''
-        ).$whereInFilter;
-    }
+        $whereNotInFilter = collect($builder->whereNotIns)
+            ->map(fn ($value, $key) => sprintf('%s:!=[%s]', $key, implode(', ', $value)))
+            ->values()
+            ->implode(' && ');
 
-    /**
-     * Create a "where" filter string.
-     *
-     * @param  array|string  $value
-     * @param  string  $key
-     * @return string
-     */
-    protected function parseWhereFilter(array|string $value, string $key): string
-    {
-        return is_array($value)
-            ? sprintf('%s:%s', $key, implode('', $value))
-            : sprintf('%s:=%s', $key, $value);
-    }
-
-    /**
-     * Create a "where in" filter string.
-     *
-     * @param  array  $value
-     * @param  string  $key
-     * @return string
-     */
-    protected function parseWhereInFilter(array $value, string $key): string
-    {
-        return sprintf('%s:=%s', $key, '['.implode(', ', $value).']');
+        return collect([
+            $whereFilter,
+            $whereInFilter,
+            $whereNotInFilter,
+        ])->filter()->values()->implode(' && ');
     }
 
     /**
